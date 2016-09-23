@@ -1,0 +1,163 @@
+<?xml version="1.0"?>
+<implementation>
+	<specVersion>
+		<major>1</major>
+		<minor>5</minor>
+	</specVersion>
+	<settings>
+		<protocol>cr</protocol>
+	</settings>
+	<startup>main</startup>
+	<functions>
+		local PRESENCE_SID = "urn:afoyi-com:serviceId:PresenceSensor1"
+		local SWITCH_SID = "urn:upnp-org:serviceId:SwitchPower1"
+		local SECURITY_SID = "urn:micasaverde-com:serviceId:SecuritySensor1"
+		local HADEVICE_SID = "urn:micasaverde-com:serviceId:HaDevice1"
+		local GATEWAY_SID = "urn:micasaverde-com:serviceId:HomeAutomationGateway1"
+
+		local DEFAULT_ADDRESS = "00:00:00:00:00:00"
+		local DEFAULT_DEVICETYPE = "bluetooth"
+
+		local function log(text)
+			local id = PARENT_DEVICE or "unknown"
+			luup.log("PresenceSensor #" .. id .. " " .. text)
+		end
+
+		--
+		-- Initializes variables if none were found in config
+		--
+		local function initSettings(address, devicetype, enable)
+			address = address or DEFAULT_ADDRESS
+			devicetype = devicetype or DEFAULT_DEVICETYPE
+			enable = enable or "1"
+
+			luup.variable_set(PRESENCE_SID, "Address", address, parentDevice)
+			luup.variable_set(PRESENCE_SID, "DeviceType", devicetype, parentDevice)
+			luup.variable_set(SWITCH_SID, "Target", enable, parentDevice)
+			luup.variable_set(SWITCH_SID, "Status", enable, parentDevice)
+
+			luup.variable_set(SECURITY_SID, "Tripped", "0", parentDevice)
+
+			luup.variable_set(HADEVICE_SID, "LastUpdate", os.time(os.date('*t')), parentDevice)
+			luup.variable_set(HADEVICE_SID, "Configured", "1", parentDevice)
+
+			log("Initialized variable: 'Address' = " .. address)
+			log("Initialized variable: 'DeviceType' = " .. devicetype)
+			log("Initialized variable: 'Enable' = " .. enable)
+
+			luup.task("Please restart Luup to initialize the plugin.", 1, "Presence Sensor", -1)
+
+			return address, devicetype, enable
+		end
+
+
+		local function readSettings(parentDevice)
+			local address = luup.variable_get(PRESENCE_SID, "Address", parentDevice)
+			local devicetype = luup.variable_get(PRESENCE_SID, "DeviceType", parentDevice)
+			local enable = luup.variable_get(SWITCH_SID, "Status", parentDevice)
+			local tripped = luup.variable_get(SECURITY_SID, "Tripped", parentDevice)
+
+			--
+			-- init configuration variables if they were empty
+			--
+			if (address == nil or devicetype == nil or enable == nil or tripped == nil) then
+				address, devicetype, enable = initSettings(address, devicetype, enable)
+			end
+
+			return address, devicetype, enable
+		end
+
+		local function checkVersion()
+			local ui7Check = luup.variable_get(PRESENCE_SID, "UI7Check", PARENT_DEVICE) or ""
+			if ui7Check == "" then
+				luup.variable_set(PRESENCE_SID, "UI7Check", "false", PARENT_DEVICE)
+				ui7Check = "false"
+			end
+			if( luup.version_branch == 1 and luup.version_major == 7 and ui7Check == "false") then
+				luup.variable_set(PRESENCE_SID, "UI7Check", "true", PARENT_DEVICE)
+				luup.attr_set("device_json", "D_PresenceSensor_UI7.json", PARENT_DEVICE)
+				luup.reload()
+			end
+		end
+
+		function main(parentDevice)
+			PARENT_DEVICE = parentDevice
+
+			log("starting up")
+
+			--check UI version
+			checkVersion()
+
+			-- Validate that the device settings are configured in Vera, otherwise this code wont work.
+			local address, devicetype, enable = readSettings(parentDevice)
+			if (address == nil) then
+				log("could not be started.")
+				luup.set_failure(true, parentDevice)
+				return false
+			end
+
+			return true
+		end
+	</functions>
+	<actionList>
+		<action>
+			<serviceId>urn:afoyi-com:serviceId:PresenceSensor1</serviceId>
+			<name>GetAddress</name>
+			<run>
+				luup.variable_get(PRESENCE_SID, "Address", parentDevice)
+			</run>
+		</action>
+		<action>
+			<serviceId>urn:afoyi-com:serviceId:PresenceSensor1</serviceId>
+			<name>SetAddress</name>
+			<run>
+				luup.variable_set(PRESENCE_SID, "Address", lul_settings.newAddressValue, parentDevice)
+			</run>
+		</action>
+		<action>
+			<serviceId>urn:micasaverde-com:serviceId:SecuritySensor1</serviceId>
+			<name>SetArmed</name>
+			<run>
+				luup.variable_set(SECURITY_SID, "Armed", lul_settings.newArmedValue, lul_device)
+				return 4, 0
+			</run>
+		</action>
+		<action>
+			<serviceId>urn:afoyi-com:serviceId:PresenceSensor1</serviceId>
+			<name>GetDeviceType</name>
+			<run>
+				luup.variable_get(PRESENCE_SID, "DeviceType", parentDevice)
+			</run>
+		</action>
+		<action>
+			<serviceId>urn:afoy-com:serviceId:PresenceSensor1</serviceId>
+			<name>SetDeviceType</name>
+			<run>
+				luup.variable_set(PRESENCE_SID, "DeviceType", lul_settings.newDeviceTypeValue, parentDevice)
+			</run>
+		</action>
+		<action>
+			<serviceId>urn:afoyi-com:serviceId:PresenceSensor1</serviceId>
+			<name>SetPresent</name>
+			<run>
+				local origTripped = luup.variable_get(SECURITY_SID, "Tripped", parentDevice) or "0"
+				if (origTripped  ~= lul_settings.newPresentValue) then
+					local time = os.time(os.date('*t'))
+					luup.variable_set(SECURITY_SID, "Tripped", lul_settings.newPresentValue, parentDevice)
+					luup.variable_set(HADEVICE_SID, "LastUpdate", time, parentDevice)
+					if ((lul_settings.newPresentValue == "1") and (origTripped == "0")) then
+						luup.variable_set(SECURITY_SID, "LastTrip", time, parentDevice)
+					end
+				end
+			</run>
+		</action>
+		<action>
+			<serviceId>urn:upnp-org:serviceId:SwitchPower1</serviceId>
+			<name>SetTarget</name>
+			<run>
+				luup.variable_set(SWITCH_SID, "Target", lul_settings.newTargetValue, parentDevice)
+				luup.variable_set(SWITCH_SID, "Status", lul_settings.newTargetValue, parentDevice)
+			</run>
+		</action>
+	</actionList>
+</implementation>

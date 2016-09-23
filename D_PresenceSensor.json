@@ -1,0 +1,318 @@
+{
+    "flashicon": "icons/Motion_Sensor.png",
+    "state_icons": [
+        "Motion_Sensor_0.png",
+        "Motion_Sensor_100.png"
+    ],
+    "x": "2",
+    "y": "4",
+    "inScene": "1",
+    "DisplayStatus": {
+        "Service": "urn:micasaverde-com:serviceId:SecuritySensor1",
+        "Variable": "Tripped",
+        "MinValue": "0",
+        "MaxValue": "1"
+    },
+        "doc_url": {
+        "doc_language": 1,
+        "doc_manual": 1,
+        "doc_version": 1,
+        "doc_platform": 0,
+        "doc_page": "sensors"
+    },
+    "ToggleButton": 1,
+    "Tabs": [
+        {
+            "Label": {
+                "lang_tag": "tabname_control",
+                "text": "Control"
+            },
+            "Position": "0",
+            "TabType": "flash",
+            "SceneGroup":[
+                {
+                    "id": "1",
+                    "top": "0.5",
+                    "left": "0",
+                    "x": "2",
+                    "y": "1"
+                },
+                {
+                    "id": "2",
+                    "top": "2",
+                    "left": "0",
+                    "x": "2",
+                    "y": "1"
+                }
+            ],
+            "ControlGroup":[
+            {
+                "id": "1",
+                "isSingle": "1",
+                "scenegroup": "1"
+            },
+            {
+                "id": "2",
+                "isSingle": "1",
+                "scenegroup": "2"
+            }
+            ],
+    "Control": [
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_arm",
+                        "text": "Arm"
+                    },
+                    "Display": {
+                        "Service": "urn:micasaverde-com:serviceId:SecuritySensor1",
+                        "Variable": "Armed",
+                        "Value": "1",
+                        "Top": 60,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:micasaverde-com:serviceId:SecuritySensor1",
+                        "Action": "SetArmed",
+                        "Parameters": [
+                            {
+                                "Name": "newArmedValue",
+                                "Value": "1"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_bypass",
+                        "text": "Bypass"
+                    },
+                    "left": "1",
+                    "Display": {
+                        "Service": "urn:micasaverde-com:serviceId:SecuritySensor1",
+                        "Variable": "Armed",
+                        "Value": "0",
+                        "Top": 60,
+                        "Left": 145,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:micasaverde-com:serviceId:SecuritySensor1",
+                        "Action": "SetArmed",
+                        "Parameters": [
+                            {
+                                "Name": "newArmedValue",
+                                "Value": "0"
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "Label": {
+                "lang_tag": "settings",
+                "text": "Settings"
+            },
+            "Position": "1",
+            "TabType": "javascript",
+            "ScriptName": "J_PresenceSensor.js",
+            "Function": "presencesensor_settings"
+        },
+        {
+            "Label": {
+                "lang_tag": "advanced",
+                "text": "Advanced"
+            },
+            "Position": "2",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "advanced_device"
+        }
+    ],
+    "sceneList": {
+        "group_1": {
+            "cmd_1": {
+                "label": "Arm",
+                "serviceId": "urn:micasaverde-com:serviceId:SecuritySensor1",
+                "action": "SetArmed",
+                "arguments": {
+                    "newArmedValue": "1"
+                },
+                "display": {
+                    "service": "urn:micasaverde-com:serviceId:SecuritySensor1",
+                    "variable": "Armed",
+                    "value": "1"
+                }
+            },
+            "cmd_2": {
+                "label": "Bypass",
+                "serviceId": "urn:micasaverde-com:serviceId:SecuritySensor1",
+                "action": "SetArmed",
+                "arguments": {
+                    "newArmedValue": "0"
+                },
+                "display": {
+                    "service": "urn:micasaverde-com:serviceId:SecuritySensor1",
+                    "variable": "Armed",
+                    "value": "0"
+                }
+            }
+        },
+        "group_2": {
+            "cmd_3": {
+                "label": "Enable",
+                "serviceId": "urn:upnp-org:serviceId:SwitchPower1",
+                "action": "SetTarget",
+                "arguments": {
+                    "newTargetValue": "1"
+                },
+                "display": {
+                    "service": "urn:upnp-org:serviceId:SwitchPower1",
+                    "variable": "Status",
+                    "value": "1"
+                }
+            },
+            "cmd_4": {
+                "label": "Disable",
+                "serviceId": "urn:upnp-org:serviceId:SwitchPower1",
+                "action": "SetTarget",
+                "arguments": {
+                    "newTargetValue": "0"
+                },
+                "display": {
+                    "service": "urn:upnp-org:serviceId:SwitchPower1",
+                    "variable": "Status",
+                    "value": "0"
+                }
+            }
+        }
+    },
+    "eventList": {
+        "event_1": {
+            "label": "A sensor (door\/window\/motion\/etc.) is tripped",
+            "serviceId": "urn:micasaverde-com:serviceId:SecuritySensor1",
+            "argumentList": {
+                "argument_1": {
+                    "dataType": "boolean",
+                    "defaultValue": "",
+                    "allowedValueList": {
+                        "Yes": "1",
+                        "No": "0"
+                    },
+                    "name": "Tripped",
+                    "comparisson": "=",
+                    "prefix": "Tripped?",
+                    "suffix": ""
+                }
+            }
+        },
+        "event_2": {
+            "label": "An armed sensor is tripped",
+            "serviceId": "urn:micasaverde-com:serviceId:SecuritySensor1",
+            "serviceStateTable": {
+                "Armed": {
+                    "value": "1",
+                    "comparisson": "="
+                }
+            },
+            "argumentList": {
+                "argument_1": {
+                    "dataType": "boolean",
+                    "allowedValueList": {
+                        "Yes": "1",
+                        "No": "0"
+                    },
+                    "name": "Tripped",
+                    "comparisson": "=",
+                    "prefix": "Tripped?",
+                    "suffix": " "
+                }
+            }
+        }
+    },
+    "eventList2": [
+        {
+            "id": 1,
+            "label": {
+                "lang_tag": "door_window_motion_sensor_is_tripped",
+                "text": "A sensor (door\/window\/motion\/etc.) is tripped"
+            },
+            "serviceId": "urn:micasaverde-com:serviceId:SecuritySensor1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "boolean",
+                    "defaultValue": "",
+                    "allowedValueList": [
+                        {
+                            "Yes": "1",
+                            "HumanFriendlyText": {
+                                "lang_tag": "",
+                                "text": "_DEVICE_NAME_ is Tripped"
+                            }
+                        },
+                        {
+                            "No": "0",
+                            "HumanFriendlyText": {
+                                "lang_tag": "",
+                                "text": "_DEVICE_NAME_ is not Tripped"
+                            }
+                        }
+                    ],
+                    "name": "Tripped",
+                    "comparisson": "=",
+                    "prefix": {},
+                    "suffix": {}
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "label": {
+                "lang_tag": "an_armed_sensor_is_tripped",
+                "text": "An armed sensor is tripped"
+            },
+            "serviceId": "urn:micasaverde-com:serviceId:SecuritySensor1",
+            "serviceStateTable": {
+                "Armed": {
+                    "value": "1",
+                    "comparisson": "="
+                }
+            },
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "boolean",
+                    "allowedValueList": [
+                        {
+                            "Yes": "1",
+                            "HumanFriendlyText": {
+                                "lang_tag": "hft_sensor_tripped",
+                                "text": "_DEVICE_NAME_ is Tripped"
+                            }
+                        },
+                        {
+                            "No": "0",
+                            "HumanFriendlyText": {
+                                "lang_tag": "hft_sensor_not_tripped",
+                                "text": "_DEVICE_NAME_ is not Tripped"
+                            }
+                        }
+                    ],
+                    "name": "Tripped",
+                    "comparisson": "=",
+                    "prefix": {},
+                    "suffix": {}
+                }
+            ]
+        }
+    ],
+    "DeviceType": "urn:schemas-afoyi-com:device:PresenceSensor:1"
+}
