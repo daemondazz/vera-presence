@@ -6,90 +6,178 @@
   </specVersion>
   <startup>main</startup>
   <functions>
-		local PRESENCE_SID = "urn:afoyi-com:serviceId:PresenceSensor1"
-		local SECURITY_SID = "urn:micasaverde-com:serviceId:SecuritySensor1"
-		local DEFAULT_ADDRESS = "00:00:00:00:00:00"
-		local DEFAULT_DEVICETYPE = "bluetooth"
+    local PRESENCE_SID = "urn:afoyi-com:serviceId:PresenceSensor1"
+    local SECURITY_SID = "urn:micasaverde-com:serviceId:SecuritySensor1"
+    local DEFAULT_ADDRESS = "00:00:00:00:00:00"
+    local DEFAULT_DEVICETYPE = "bluetooth"
+    local DEFAULT_SCANNER = ""
+    local DEFAULT_RSSI = 127
+    local scanners = {}
 
-		--
-		-- Logs a message to Vera log file
-		--
-		local function log(lul_device, text)
-			local id = lul_device or "unknown"
-			luup.log("PresenceSensor #" .. id .. " " .. text)
-		end
+    --
+    -- Logs a message to Vera log file
+    --
+    local function log(lul_device, text)
+      local id = lul_device or "unknown"
+      luup.log("PresenceSensor #" .. id .. " " .. text)
+    end
 
-		--
-		-- Checks to see if UI7 is used and changes json file once if so
-		--
-		local function checkVersion(lul_device)
-			local ui7Check = luup.variable_get(PRESENCE_SID, "UI7Check", lul_device) or ""
-			if ui7Check == "" then
-				luup.variable_set(PRESENCE_SID, "UI7Check", "false", lul_device)
-				ui7Check = "false"
-			end
-			if( luup.version_branch == 1 and luup.version_major == 7 and ui7Check == "false") then
-				luup.variable_set(PRESENCE_SID, "UI7Check", "true", lul_device)
-				luup.attr_set("device_json", "D_PresenceSensor_UI7.json", lul_device)
-				luup.reload()
-			end
-		end
+    --
+    -- Checks to see if UI7 is used and changes json file once if so
+    --
+    local function checkVersion(lul_device)
+      local ui7Check = luup.variable_get(PRESENCE_SID, "UI7Check", lul_device) or ""
+      if ui7Check == "" then
+        luup.variable_set(PRESENCE_SID, "UI7Check", "false", lul_device)
+        ui7Check = "false"
+      end
+      if( luup.version_branch == 1 and luup.version_major == 7 and ui7Check == "false") then
+        luup.variable_set(PRESENCE_SID, "UI7Check", "true", lul_device)
+        luup.attr_set("device_json", "D_PresenceSensor_UI7.json", lul_device)
+        luup.reload()
+      end
+    end
 
-		--
-		-- Initializes variables not yet found in config
-		--
-		local function initSettings(lul_device)
-			if (luup.variable_get(PRESENCE_SID, "Address", lul_device) or "") == "" then
-				luup.variable_set(PRESENCE_SID, "Address", DEFAULT_ADDRESS, lul_device)
-				log(lul_device, "Initialized variable: 'Address' = " .. DEFAULT_ADDRESS)
-				luup.variable_set(PRESENCE_SID, "DeviceType", DEFAULT_DEVICETYPE, lul_device)
-				log(lul_device, "Initialized variable: 'DeviceType' = " .. DEFAULT_DEVICETYPE)
-				luup.variable_set(SECURITY_SID, "Tripped", "0", lul_device)
-				log(lul_device, "Initialized variable: 'Tripped' = 0")
-				luup.variable_set(SECURITY_SID, "LastTrip", "0", lul_device)
-				log(lul_device, "Initialized variable: 'LastTrip' = 0")
-				-- trick to make Armed (already exists) show up in variables
-				luup.variable_set(SECURITY_SID, "Armed", "1", lul_device)
-				luup.variable_set(SECURITY_SID, "Armed", "0", lul_device)
-				log(lul_device, "Initialized variable: 'Armed' = 0")
-			end
-		end
+    --
+    -- Initializes variables not yet found in config
+    --
+    local function initSettings(lul_device)
+      -- original variables
+      if (luup.variable_get(PRESENCE_SID, "Address", lul_device) or "") == "" then
+        luup.variable_set(PRESENCE_SID, "Address", DEFAULT_ADDRESS, lul_device)
+        log(lul_device, "Initialized variable: 'Address' = " .. DEFAULT_ADDRESS)
+        luup.variable_set(PRESENCE_SID, "DeviceType", DEFAULT_DEVICETYPE, lul_device)
+        log(lul_device, "Initialized variable: 'DeviceType' = " .. DEFAULT_DEVICETYPE)
+        luup.variable_set(SECURITY_SID, "Tripped", "0", lul_device)
+        log(lul_device, "Initialized variable: 'Tripped' = 0")
+        luup.variable_set(SECURITY_SID, "LastTrip", "0", lul_device)
+        log(lul_device, "Initialized variable: 'LastTrip' = 0")
+        -- trick to make Armed (already exists) show up in variables
+        luup.variable_set(SECURITY_SID, "Armed", "1", lul_device)
+        luup.variable_set(SECURITY_SID, "Armed", "0", lul_device)
+        log(lul_device, "Initialized variable: 'Armed' = 0")
+      end
 
-		function main(lul_device)
-			log(lul_device, "starting up")
+      -- new variables for multi-scanner
+      if (luup.variable_get(PRESENCE_SID, "RSSI", lul_device) or "") == "" then
+        luup.variable_set(PRESENCE_SID, "Scanner", DEFAULT_SCANNER, lul_device)
+        log(lul_device, "Initialized variable: 'Scanner' = " .. DEFAULT_SCANNER)
+        luup.variable_set(PRESENCE_SID, "RSSI", DEFAULT_RSSI, lul_device)
+        log(lul_device, "Initialized variable: 'RSSI' = " .. DEFAULT_RSSI)
+      end
 
-			--check UI version
-			checkVersion(lul_device)
+      -- Startup with no scanners active and timed out
+      scanners = {}
+      luup.variable_set(SECURITY_SID, "Tripped", "0", lul_device)
+      luup.variable_set(PRESENCE_SID, "Scanner", DEFAULT_SCANNER, lul_device)
+      luup.variable_set(PRESENCE_SID, "RSSI", DEFAULT_RSSI, lul_device)
+    end
 
-			-- Validate that the device settings are configured
-			initSettings(lul_device)
+    function main(lul_device)
+      log(lul_device, "starting up")
 
-			return true, "Startup success", "PresenceSensor"
-		end
-	</functions>
+      -- Check UI version
+      checkVersion(lul_device)
+
+      -- Validate that the device settings are configured
+      initSettings(lul_device)
+
+      return true, "Startup success", "PresenceSensor"
+    end
+
+    local function find_best_scanner()
+      local best_scanner = DEFAULT_SCANNER
+      local best_RSSI = DEFAULT_RSSI
+      local scanner
+      local value
+      for scanner, value in pairs(scanners) do
+        if value['RSSI'] &gt; best_RSSI or best_scanner == DEFAULT_SCANNER then
+          best_scanner = scanner
+          best_RSSI = value['RSSI']
+        end
+      end
+      return best_scanner, best_RSSI
+    end
+
+    function scanner_timeout(scanner)
+      local time = os.time(os.date('*t'))
+
+      -- If the scanner has not passed it's expiry, restart timer
+      if scanners[scanner]["timeout"] &gt; time then
+        local next_expiry = scanners[scanner]["timeout"] - time
+        luup.call_delay("scanner_timeout", next_expiry, scanner)
+      else
+        scanners[scanner] = nil
+        if next(scanners) == nil then
+          luup.variable_set(SECURITY_SID, "Tripped", "0", lul_device)
+          local best_scanner
+          local best_RSSI
+          best_scanner, best_RSSI = find_best_scanner()
+          luup.variable_set(PRESENCE_SID, "Scanner", best_scanner, lul_device)
+          luup.variable_set(PRESENCE_SID, "RSSI", best_RSSI, lul_device)
+        end
+      end
+      return 0
+    end
+    </functions>
   <actionList>
     <action>
       <serviceId>urn:afoyi-com:serviceId:PresenceSensor1</serviceId>
       <name>SetPresent</name>
       <run>
-				local origTripped = luup.variable_get(SECURITY_SID, "Tripped", lul_device) or "0"
-				if (origTripped  ~= lul_settings.newPresentValue) then
-					luup.variable_set(SECURITY_SID, "Tripped", lul_settings.newPresentValue, lul_device)
-					if (lul_settings.newPresentValue == "1") then
-						local time = os.time(os.date('*t'))
-						luup.variable_set(SECURITY_SID, "LastTrip", time, lul_device)
-					end
-				end
-				return true
-			</run>
+        local scanner
+        local timeout
+        local RSSI
+
+        -- Parse the three values from scanner
+        local str
+        for str in string.gmatch(lul_settings.newPresentValue, "([^,]+)") do
+          if scanner == nil then
+            scanner = str
+          elseif timeout == nil then
+            timeout = tonumber(str)
+          else
+            RSSI = tonumber(str)
+          end
+        end
+
+        -- Check if currently not tripped (no scanners timing out)
+        local time = os.time(os.date('*t'))
+        local create_timer = false
+        if next(scanners) == nil then
+          luup.variable_set(SECURITY_SID, "Tripped", "1", lul_device)
+          luup.variable_set(SECURITY_SID, "LastTrip", time, lul_device)
+          create_timer = true
+
+        -- Otherwise, check if this timer already timed out
+        elseif scanners[scanner] == nil then
+          create_timer = true
+        end
+
+        -- Update this scanner
+        scanners[scanner] = {["timeout"]=time + timeout, ["RSSI"]=RSSI}
+
+        -- Update best scanner
+        local best_scanner
+        local best_RSSI
+        best_scanner, best_RSSI = find_best_scanner()
+        luup.variable_set(PRESENCE_SID, "Scanner", best_scanner, lul_device)
+        luup.variable_set(PRESENCE_SID, "RSSI", best_RSSI, lul_device)
+
+        -- Create timer if needed
+        if create_timer then
+          luup.call_delay("scanner_timeout", timeout, scanner)
+        end
+        return true
+      </run>
     </action>
     <action>
       <serviceId>urn:micasaverde-com:serviceId:SecuritySensor1</serviceId>
       <name>SetArmed</name>
       <run>
-				luup.variable_set(SECURITY_SID, "Armed", lul_settings.newArmedValue, lul_device)
-				return true
-			</run>
+        luup.variable_set(SECURITY_SID, "Armed", lul_settings.newArmedValue, lul_device)
+        return true
+      </run>
     </action>
   </actionList>
 </implementation>
