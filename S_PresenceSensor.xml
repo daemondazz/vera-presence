@@ -15,11 +15,16 @@
       <dataType>string</dataType>
       <defaultValue>bluetooth</defaultValue>
     </stateVariable>
-		<stateVariable>
-			 <name>TypeBoolean</name>
-			 <dataType>boolean</dataType>
-			 <defaultValue>0</defaultValue>
-		</stateVariable>
+    <stateVariable>
+      <name>Scanner</name>
+      <dataType>string</dataType>
+      <defaultValue></defaultValue>
+    </stateVariable>
+    <stateVariable>
+      <name>RSSI</name>
+      <dataType>i1</dataType>
+      <defaultValue>127</defaultValue>
+    </stateVariable>
   </serviceStateTable>
   <actionList>
     <action>
@@ -28,7 +33,7 @@
         <argument>
           <name>newPresentValue</name>
           <direction>in</direction>
-          <relatedStateVariable>TypeBoolean</relatedStateVariable>
+          <relatedStateVariable>Scanner</relatedStateVariable>
         </argument>
       </argumentList>
     </action>
